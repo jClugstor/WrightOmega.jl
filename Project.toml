@@ -3,11 +3,36 @@ uuid = "908b8e81-f5db-43b6-a399-5e2cd9052e4b"
 authors = ["jClugstor <jadonclugston@gmail.com> and contributors"]
 version = "1.0.0-DEV"
 
+[weakdeps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+
+[extensions]
+WrightOmegaChainRulesCoreExt = "ChainRulesCore"
+WrightOmegaEnzymeExt = "Enzyme"
+WrightOmegaForwardDiffExt = "ForwardDiff"
+WrightOmegaMooncakeExt = "Mooncake"
+WrightOmegaSymbolicsExt = "Symbolics"
+
 [compat]
+ChainRulesCore = "1"
+Enzyme = "0.13"
+ForwardDiff = "0.10, 1"
+Mooncake = "0.4, 0.5"
+Symbolics = "6, 7"
 julia = "1.10"
 
 [extras]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["ChainRulesCore", "Enzyme", "ForwardDiff", "Mooncake", "Random", "Symbolics", "Test"]
