@@ -82,6 +82,7 @@ end
         @test wrightomega(true) === wrightomega(1.0)
         wb = wrightomega(big"1.0")                          # no infinite recursion
         @test wb isa BigFloat && wb == 1.0
+        @test wrightomega(missing) === missing              # like Base/SpecialFunctions
     end
 
 

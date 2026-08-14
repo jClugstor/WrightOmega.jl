@@ -344,3 +344,5 @@ end
 # Float64 accuracy. `oftype(float(x), ...)` rather than `wrightomega(float(x))` so that
 # types with `float(T) === T` (e.g. BigFloat) cannot recurse.
 wrightomega(x::T) where {T<:Real} = oftype(float(x), wrightomega(Float64(x)))
+
+wrightomega(::Missing) = missing
