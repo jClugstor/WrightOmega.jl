@@ -17,12 +17,8 @@
 #   (iii) L(x) = x*(1 - ln(x)/(x+1)) for very large x, which is one Newton
 #         correction applied to the asymptote omega(x) -> x.
 #
-# Coefficients are Fukushima's Tables 2 and 11-23 (double precision), transcribed
-# verbatim. Nothing here is fitted or tuned locally; see PROVENANCE.md.
-#
-# This is a precomputed approximation, not a solve: there is no iteration, no
-# convergence test, and no residual at run time. That is what makes it both exact
-# to ~1 ulp and cheaper than a single `exp` call.
+# Coefficients are Fukushima's Tables 2 and 11-23 (double precision)
+
 
 # ---------------------------------------------------------------- region bounds
 # Fukushima Table 2. R_k is used on [X[k-1], X[k]); R0(exp(x)) below X0; L(x) above X12.
@@ -276,18 +272,10 @@ const WO_Q12 = (1.0,
 
 The Wright omega function: the unique real solution `w > 0` of `w + log(w) == x`.
 
-Equal to `lambertw(exp(x))` but evaluated without forming `exp(x)`, so it is finite
-and accurate over the whole floating-point range of `x` rather than only
-`-745 < x < 710`. Monotonically increasing, with `w -> exp(x)` as `x -> -Inf` and
-`w -> x - log(x)` as `x -> +Inf`.
-
-Accurate to a few ulp (Fukushima reports at most 8 double-precision machine epsilon
-when evaluated in double precision) and costs less than one `exp` call.
-
-The kernel is `@fastmath`, which is worth roughly 40 % of the runtime and costs only
-the subnormal tail: results below `floatmin(Float64)` flush to zero, so `wrightomega`
-returns exactly `0.0` for `x < -708.4` where the true value is a subnormal near
-`exp(x)`. Accuracy over the whole normal range is unaffected.
+Equal to `lambertw(exp(x))` but evaluated without forming `exp(x)`, so it is finite and
+accurate over the whole floating-point range of `x`. Accurate to a few ulp and costs
+less than one `exp` call. Results below `floatmin(Float64)` flush to zero, so
+`wrightomega` returns exactly `0.0` for `x < -708.4`.
 
 ```
 julia> wrightomega(1.0)            # 1 + log(1) == 1
@@ -297,10 +285,7 @@ julia> wrightomega(0.0)            # the omega constant
 0.5671432904097839
 ```
 
-Method and coefficients: Fukushima (2020). See `src/real.jl`.
-
-Complex arguments are supported too (TOMS Algorithm 917; see `src/complex.jl`); real
-arguments always take this fast real path.
+Method and coefficients: Fukushima (2020). Complex arguments use TOMS Algorithm 917.
 """
 @inline function wrightomega(x::Float64)
     # Non-finite arguments are screened OUTSIDE the @fastmath kernel. @fastmath

@@ -146,28 +146,21 @@ end
 """
     wrightomega(z::Complex) -> Complex
 
-The Wright omega function on the complex plane: `omega(z) = W_K(z)(exp(z))` with `K` the
-unwinding number -- equivalently, the solution of `w + log(w) == z` continued from the
-real value `omega(0) = 0.567...`.
+The Wright omega function on the complex plane: `omega(z) = W_K(z)(exp(z))` with `K`
+the unwinding number -- the solution of `w + log(w) == z` continued from the real
+value `omega(0) = 0.567...`.
 
-Single valued everywhere, but discontinuous across the two rays `z = t ± im*π, t ≤ -1`
-(the images of the Lambert `W` branch cut). Following Lawrence, Corless & Jeffrey
-(2012), an input whose imaginary part equals `±Float64(π)` bitwise with `real(z) ≤ -1`
-lies *on* a ray, and the value there is the limit from below the ray. Inputs with zero
-imaginary part are real and take the fast real path.
-
-Accurate to a few ulp over the whole plane: a series initial approximation by region is
-polished by at most two fourth-order iterations of the defining equation.
+Single valued but discontinuous across the rays `z = t ± im*π, t ≤ -1` (the images of
+the Lambert `W` branch cut); an input whose imaginary part equals `±Float64(π)` bitwise
+with `real(z) ≤ -1` lies on a ray and takes the limit from below. Inputs with zero
+imaginary part take the fast real path. Accurate to a few ulp over the whole plane.
 
 ```
-julia> wrightomega(1.0 + 0.0im)
-1.0 + 0.0im
-
 julia> wrightomega(-1 + im*π)      # singular point, omega == -1
 -1.0 + 0.0im
 ```
 
-Method: TOMS Algorithm 917 (Lawrence, Corless & Jeffrey 2012). See `src/complex.jl`.
+Method: TOMS Algorithm 917 (Lawrence, Corless & Jeffrey 2012).
 """
 function wrightomega(z::ComplexF64)
     x, y = reim(z)
