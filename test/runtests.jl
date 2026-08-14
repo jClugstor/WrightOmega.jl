@@ -6,6 +6,7 @@ using ForwardDiff: ForwardDiff
 using Mooncake: Mooncake
 using Enzyme: Enzyme
 using Random: Xoshiro
+using Aqua: Aqua
 
 const WO_PI = 3.141592653589793   # Float64(pi), bitwise the on-ray value
 
@@ -44,21 +45,25 @@ end
 
 @testset "WrightOmega.jl" begin
 
+    @testset "Aqua" begin
+        # ambiguities/piracy also cover the extension methods, since the AD packages
+        # are loaded above
+        Aqua.test_all(WrightOmega)
+    end
+
     @testset "real: values" begin
         @test wrightomega(0.0) ≈ 0.5671432904097838 rtol = 4eps()   # omega constant
         @test wrightomega(1.0) ≈ 1.0 rtol = 4eps()
         @test wrightomega(1.0 + ℯ) ≈ float(ℯ) rtol = 4eps()
         # defining equation over the normal range
         # (atol floor: w + log(w) cancels for small |x|, so the residual there reflects
-        # rounding in the test expression, not error in w)
-        for x in exp10.(range(-3, 300; length = 40))
+        # rounding in the test expression, not error in w; w == 0 is the documented
+        # flush to zero for very negative x)
+        function defeq(x)
             w = wrightomega(x)
-            @test w + log(w) ≈ x rtol = 1e-13 atol = 1e-14
-            w = wrightomega(-x)
-            if w > 0                                 # not flushed to zero
-                @test w + log(w) ≈ -x rtol = 1e-13 atol = 1e-14
-            end
+            return w == 0 || isapprox(w + log(w), x; rtol = 1e-13, atol = 1e-14)
         end
+        @test all(defeq(s * x) for x in exp10.(range(-3, 300; length = 40)), s in (1, -1))
         # monotonic on a coarse grid
         xs = -800.0:7.3:800.0
         @test issorted(wrightomega.(xs))
@@ -81,6 +86,7 @@ end
         wb = wrightomega(big"1.0")                          # no infinite recursion
         @test wb isa BigFloat && wb == 1.0
     end
+
 
     @testset "complex: special values (TOMS 917 Table I)" begin
         @test wrightomega(complex(-1.0, WO_PI)) ≈ -1.0 + 0.0im atol = 1e-15
@@ -110,67 +116,63 @@ end
             -0.995+WO_PI*im, -0.995-WO_PI*im,           # band, past the ray endpoints
             complex(-5.0, WO_PI), complex(-5.0, -WO_PI) # on the rays
         ]
-        for z in pts
-            @test relerr(z) < 20eps() # paper reports <= 2 ulp
-        end
+        @test all(relerr(z) < 20eps() for z in pts)   # paper reports <= 2 ulp
         # near the singular points -1 +- i*pi the condition number blows up like
         # 1/sqrt(distance); allow the correspondingly conditioned error
-        for z in ComplexF64[-1+1e-6im+WO_PI*im, -1.000001-WO_PI*im]
-            @test relerr(z) < 1e-12
-        end
+        @test all(relerr(z) < 1e-12 for z in ComplexF64[-1+1e-6im+WO_PI*im, -1.000001-WO_PI*im])
     end
 
     @testset "complex: functional identity w*exp(w) == exp(z)" begin
-        for x in -17.0:1.7:17.0, y in -17.0:1.3:17.0
-            abs(abs(y) - WO_PI) < 0.05 && continue   # skip the ill-conditioned rays
-            z = complex(x, y)
+        function identity_ok(z)
+            abs(abs(imag(z)) - WO_PI) < 0.05 && return true   # skip the ill-conditioned rays
             w = wrightomega(z)
-            @test w * exp(w) ≈ exp(z) rtol = 1e-13
+            return isapprox(w * exp(w), exp(z); rtol = 1e-13)
         end
+        @test all(identity_ok(complex(x, y)) for x in -17.0:1.7:17.0, y in -17.0:1.3:17.0)
     end
 
     @testset "complex: defining equation in the principal strip" begin
-        for x in -30.0:3.1:30.0, y in (-WO_PI+0.05):0.5:WO_PI
-            z = complex(x, y)
+        function strip_ok(z)
             w = wrightomega(z)
-            @test w + log(w) ≈ z rtol = 1e-13
+            return isapprox(w + log(w), z; rtol = 1e-13)
         end
+        @test all(strip_ok(complex(x, y))
+                  for x in -30.0:3.1:30.0, y in (-WO_PI+0.05):0.5:WO_PI)
     end
 
     @testset "complex: conjugate symmetry" begin
-        for z in ComplexF64[1.5+2.3im, -3+1im, -5+3.5im, -1.5+2.5im, 10+10im,
-                            -5+(WO_PI-0.003)im, 0.3+0.2im, -7.0+0.0im]
-            @test wrightomega(conj(z)) == conj(wrightomega(z))
-        end
+        @test all(wrightomega(conj(z)) == conj(wrightomega(z))
+                  for z in ComplexF64[1.5+2.3im, -3+1im, -5+3.5im, -1.5+2.5im, 10+10im,
+                                      -5+(WO_PI-0.003)im, 0.3+0.2im, -7.0+0.0im])
     end
 
     @testset "complex: discontinuity across the rays" begin
-        for t in (-2.0, -5.0, -20.0)
-            # on the ray == limit from below the ray (continuity from below)
+        function rays_ok(t)
+            # top ray: on-ray == limit from below (inside the strip, W0-like small
+            # negative real value); crossing it jumps to the W_{-1}-like branch
             w_on = wrightomega(complex(t, WO_PI))
             w_below = wrightomega(complex(t, prevfloat(WO_PI)))
-            @test w_on ≈ w_below rtol = 1e-10
-            @test real(w_on) < 0 && abs(imag(w_on)) < 1e-15    # W0-like small negative
-            # crossing the ray jumps to the W_{-1}-like branch
             w_above = wrightomega(complex(t, nextfloat(WO_PI)))
-            @test abs(w_above - w_on) > 1
-            @test real(w_above) < -1 && imag(w_above) >= 0     # Im w > 0 above the ray
-            # mirrored bottom ray: on-ray == limit from below (outside the strip)
+            top = isapprox(w_on, w_below; rtol = 1e-10) &&
+                  real(w_on) < 0 && abs(imag(w_on)) < 1e-15 &&
+                  abs(w_above - w_on) > 1 &&
+                  real(w_above) < -1 && imag(w_above) >= 0     # Im w > 0 above the ray
+            # bottom ray, mirrored: on-ray == limit from below (outside the strip)
             v_on = wrightomega(complex(t, -WO_PI))
             v_below = wrightomega(complex(t, prevfloat(-WO_PI)))
-            @test v_on ≈ v_below rtol = 1e-10
-            @test real(v_on) < -1 && abs(imag(v_on)) < 1e-15   # W_{-1}-like
             v_above = wrightomega(complex(t, nextfloat(-WO_PI)))
-            @test abs(v_above - v_on) > 1
-            @test imag(v_above) <= 0                           # Im w <= 0 in the strip
+            bot = isapprox(v_on, v_below; rtol = 1e-10) &&
+                  real(v_on) < -1 && abs(imag(v_on)) < 1e-15 &&
+                  abs(v_above - v_on) > 1 &&
+                  imag(v_above) <= 0                           # Im w <= 0 in the strip
+            return top && bot
         end
+        @test all(rays_ok(t) for t in (-2.0, -5.0, -20.0))
     end
 
     @testset "complex: real-axis fast path routing" begin
-        for x in (-100.0, -5.0, -1.5, 0.0, 0.5, 2.0, 1e6)
-            @test wrightomega(complex(x, 0.0)) === complex(wrightomega(x), 0.0)
-            @test wrightomega(complex(x, -0.0)) === complex(wrightomega(x), -0.0)
-        end
+        @test all(wrightomega(complex(x, y)) === complex(wrightomega(x), y)
+                  for x in (-100.0, -5.0, -1.5, 0.0, 0.5, 2.0, 1e6), y in (0.0, -0.0))
     end
 
     @testset "complex: non-finite inputs" begin
@@ -192,6 +194,26 @@ end
         wb = wrightomega(Complex{BigFloat}(1 + 1im))                    # no recursion
         @test wb isa Complex{BigFloat}
         @test wb ≈ wrightomega(1.0 + 1.0im) rtol = 1e-14
+    end
+
+    @testset "real/complex seam: near-axis consistency" begin
+        # The real path (Fukushima) and the complex path (TOMS 917) are different
+        # algorithms; a few ulp off the real axis the complex kernel must agree with
+        # the real kernel to their combined accuracy. To first order
+        # ω(x + iε) = ω(x) + iε ω/(1+ω) with 0 < ω/(1+ω) < 1, so the real part matches
+        # ω(x) and the imaginary part is bounded by |ε| and carries ε's sign.
+        function seam_consistent(x, s)
+            ε = s * eps(x)
+            wr = wrightomega(x)
+            wc = wrightomega(complex(x, ε))
+            return isapprox(real(wc), wr; rtol = 1e-14) &&
+                   abs(imag(wc)) <= 2 * abs(ε) &&
+                   (sign(imag(wc)) == sign(ε) || iszero(imag(wc)))
+        end
+        @test all(seam_consistent(x, s)
+                  for x in (-500.0, -5.0, -1.7969, -1.0, 0.0, 1.0, 2.7, 10.0, 40.0,
+                            250.0, 1.5e3, 1e4, 2e5, 2e6, 1e8, 1e10, 4e11, 1e12),
+                      s in (4.0, -4.0))
     end
 
     @testset "Symbolics extension" begin
