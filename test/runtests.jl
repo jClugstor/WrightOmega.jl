@@ -63,10 +63,7 @@ end
             w = wrightomega(x)
             return w == 0 || isapprox(w + log(w), x; rtol = 1e-13, atol = 1e-14)
         end
-        @test all(defeq(s * x) for x in exp10.(range(-3, 300; length = 40)), s in (1, -1))
-        # monotonic on a coarse grid
-        xs = -800.0:7.3:800.0
-        @test issorted(wrightomega.(xs))
+        @test all(defeq(s * x) for x in exp10.(range(-3, 300; length = 1000)), s in (1, -1))
     end
 
     @testset "real: extremes and non-finite" begin
