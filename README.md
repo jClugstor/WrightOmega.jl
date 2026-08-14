@@ -11,10 +11,6 @@ The Wright omega function `ω(z)`: the solution of
 equal to `W_K(z)(exp(z))`, where `W` is the Lambert W function and `K(z)` is the
 unwinding number. One exported function, `wrightomega`, for real and complex arguments.
 
-```julia
-using Pkg; Pkg.add(url = "https://github.com/jClugstor/WrightOmega.jl")
-```
-
 ## Usage
 
 ```julia
